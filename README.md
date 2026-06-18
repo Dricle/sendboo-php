@@ -69,6 +69,73 @@ $rows = User::where('subscribed', true)->get()
 $sendboo->subscribers()->sync('email-list-uuid', $rows, unsubscribeMissing: true);
 ```
 
+## Scheduled sync (Laravel)
+
+The package is framework-agnostic, but a common setup is a Laravel Artisan command that keeps a Sendboo email list in step with your users. Generate it with `php artisan make:command SyncSendboo`:
+
+```php
+<?php
+
+namespace App\Console\Commands;
+
+use App\Models\User;
+use Illuminate\Console\Command;
+use Sendboo\Sendboo;
+
+class SyncSendboo extends Command
+{
+    protected $signature = 'sendboo:sync';
+
+    protected $description = 'Sync subscribed users to the Sendboo email list';
+
+    public function handle(): int
+    {
+        $sendboo = new Sendboo(
+            token:          config('services.sendboo.token'),
+            organizationId: config('services.sendboo.organization_id'),
+            storeId:        config('services.sendboo.store_id'),
+        );
+
+        $rows = User::where('subscribed', true)->get()
+            ->map(fn (User $user) => [
+                'email'      => $user->email,
+                'first_name' => $user->first_name,
+                'tags'       => $user->plan === 'pro' ? ['pro'] : [],
+            ])
+            ->all();
+
+        $result = $sendboo->subscribers()->sync(
+            config('services.sendboo.list_uuid'),
+            $rows,
+            unsubscribeMissing: true,
+        );
+
+        $this->info("Synced {$result['upserted']}, unsubscribed {$result['unsubscribed']}.");
+
+        return self::SUCCESS;
+    }
+}
+```
+
+Add the credentials to `config/services.php`:
+
+```php
+'sendboo' => [
+    'token'           => env('SENDBOO_TOKEN'),
+    'organization_id' => env('SENDBOO_ORG_ID'),
+    'store_id'        => env('SENDBOO_STORE_ID'),
+    'list_uuid'       => env('SENDBOO_LIST_UUID'),
+],
+```
+
+Then schedule it in `routes/console.php`:
+
+```php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('sendboo:sync')->dailyAt('03:00');
+```
+
 ## Manage individual subscribers
 
 ```php
