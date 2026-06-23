@@ -21,7 +21,7 @@ final readonly class Subscribers
      */
     public function upsert(string $listId, array $subscriber): array
     {
-        return $this->sendboo->request('POST', "lists/{$listId}/subscribers", $subscriber);
+        return $this->sendboo->request('POST', "lists/{$listId}/contacts", $subscriber);
     }
 
     /**
@@ -29,7 +29,7 @@ final readonly class Subscribers
      */
     public function unsubscribe(string $listId, string $email): array
     {
-        return $this->sendboo->request('POST', "lists/{$listId}/subscribers/unsubscribe", ['email' => $email]);
+        return $this->sendboo->request('DELETE', "lists/{$listId}/contacts", ['email' => $email]);
     }
 
     /**
@@ -84,7 +84,7 @@ final readonly class Subscribers
         do {
             $response = $this->sendboo->request(
                 'GET',
-                "lists/{$listId}/subscribers",
+                "lists/{$listId}/contacts",
                 [],
                 ['page' => $page],
             );
