@@ -19,17 +19,17 @@ final readonly class Subscribers
      * @param  array<string,mixed>  $subscriber
      * @return array<string,mixed>
      */
-    public function upsert(string $emailListId, array $subscriber): array
+    public function upsert(string $listId, array $subscriber): array
     {
-        return $this->sendboo->request('POST', "email-lists/{$emailListId}/subscribers", $subscriber);
+        return $this->sendboo->request('POST', "lists/{$listId}/subscribers", $subscriber);
     }
 
     /**
      * @return array<string,mixed>
      */
-    public function unsubscribe(string $emailListId, string $email): array
+    public function unsubscribe(string $listId, string $email): array
     {
-        return $this->sendboo->request('POST', "email-lists/{$emailListId}/unsubscribe", ['email' => $email]);
+        return $this->sendboo->request('POST', "lists/{$listId}/subscribers/unsubscribe", ['email' => $email]);
     }
 
     /**
@@ -43,7 +43,7 @@ final readonly class Subscribers
      * @return array{upserted:int,unsubscribed:int}
      */
     public function sync(
-        string $emailListId,
+        string $listId,
         array $subscribers,
         bool $unsubscribeMissing = false,
         bool $skipConfirmation = true,
@@ -52,18 +52,18 @@ final readonly class Subscribers
 
         foreach ($subscribers as $subscriber) {
             $subscriber['skip_confirmation'] = $subscriber['skip_confirmation'] ?? $skipConfirmation;
-            $this->upsert($emailListId, $subscriber);
+            $this->upsert($listId, $subscriber);
             $seen[strtolower((string) $subscriber['email'])] = true;
         }
 
         $unsubscribed = 0;
 
         if ($unsubscribeMissing) {
-            foreach ($this->all($emailListId) as $current) {
+            foreach ($this->all($listId) as $current) {
                 $email = strtolower((string) ($current['email'] ?? ''));
 
                 if ($email !== '' && ! isset($seen[$email])) {
-                    $this->unsubscribe($emailListId, $current['email']);
+                    $this->unsubscribe($listId, $current['email']);
                     $unsubscribed++;
                 }
             }
@@ -77,14 +77,14 @@ final readonly class Subscribers
      *
      * @return iterable<int,array<string,mixed>>
      */
-    public function all(string $emailListId): iterable
+    public function all(string $listId): iterable
     {
         $page = 1;
 
         do {
             $response = $this->sendboo->request(
                 'GET',
-                "email-lists/{$emailListId}/subscribers",
+                "lists/{$listId}/subscribers",
                 [],
                 ['page' => $page],
             );
